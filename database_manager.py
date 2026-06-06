@@ -1,72 +1,65 @@
-import sqlite3
-import smtplib
-from email.mime.text import MIMEText
+import os
+import psycopg2
+import pandas as pd
 
-DB_NAME = "crypto_analytics.db"
+# Render injects this environment variable automatically when linked
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
-# EMAIL CONFIGURATION (Optional setup for later)
-SENDER_EMAIL = "your_email@gmail.com"
-RECEIVER_EMAIL = "your_email@gmail.com"
-EMAIL_PASSWORD = "your_app_password" 
+def get_connection():
+    """Establishes an active connection to the cloud PostgreSQL database."""
+    if not DATABASE_URL:
+        raise ValueError("❌ DATABASE_URL environment variable is missing on Render configuration settings!")
+    return psycopg2.connect(DATABASE_URL)
 
 def initialize_database():
-    """Creates a local SQLite database file and defines the schema table."""
-    print("🗄️ Initializing SQLite database storage...")
-    conn = sqlite3.connect(DB_NAME)
+    """Creates the PostgreSQL market history table structure if it does not exist."""
+    print("🗄️ Checking Cloud PostgreSQL infrastructure...")
+    conn = get_connection()
     cursor = conn.cursor()
+    
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS market_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            coin_id TEXT NOT NULL,
-            symbol TEXT NOT NULL,
-            name TEXT NOT NULL,
-            current_price REAL NOT NULL,
-            market_cap REAL,
-            total_volume REAL,
-            price_change_24h REAL,
-            captured_at TEXT NOT NULL
+            id SERIAL PRIMARY KEY,
+            coin_id VARCHAR(50) NOT NULL,
+            symbol VARCHAR(20) NOT NULL,
+            name VARCHAR(50) NOT NULL,
+            current_price NUMERIC NOT NULL,
+            market_cap NUMERIC,
+            total_volume NUMERIC,
+            price_change_24h NUMERIC,
+            captured_at TIMESTAMP NOT NULL
         )
     """)
     conn.commit()
+    cursor.close()
     conn.close()
-    print(f"✅ Database connection active. File created: '{DB_NAME}'")
-
-def send_email_alert(coin_id, price, change):
-    """Simulates or sends a real email alert when volatility is detected."""
-    subject = f"⚠️ CRITICAL ALERT: {coin_id.upper()} Volatility Detected!"
-    body = f"The asset {coin_id.upper()} has shifted by {change:.2f}% and is currently trading at ${price:,}!"
-    
-    print(f"\n📢 [ALERT TRIGGERED] Sending email to {RECEIVER_EMAIL}...")
-    print(f"Subject: {subject}\nBody: {body}\n")
-
-    # This block is ready for real email delivery when you provide real credentials
-    if "your_email" not in SENDER_EMAIL:
-        try:
-            msg = MIMEText(body)
-            msg['Subject'] = subject
-            msg['From'] = SENDER_EMAIL
-            msg['To'] = RECEIVER_EMAIL
-            
-            with smtplib.SMTP_SSL('://gmail.com', 465) as server:
-                server.login(SENDER_EMAIL, EMAIL_PASSWORD)
-                server.sendmail(SENDER_EMAIL, RECEIVER_EMAIL, msg.as_string())
-            print("✉️ Real email sent successfully!")
-        except Exception as e:
-            print(f"❌ Failed to send real email: {e}")
+    print("✅ PostgreSQL Table schema verified successfully.")
 
 def save_dataframe_to_sql(df):
-    """Appends data rows directly from a Pandas DataFrame into the SQL table."""
+    """Appends cleansed Pandas DataFrame records straight into the cloud table rows."""
     if df is None or df.empty:
+        print("⚠️ DataFrame is empty. Ingestion upload process skipped.")
         return
         
-    conn = sqlite3.connect(DB_NAME)
-    df_to_insert = df.rename(columns={"price_change_percentage_24h": "price_change_24h"})
-    df_to_insert.to_sql("market_history", conn, if_exists="append", index=False)
-    conn.close()
-    print(f"💾 SUCCESS: Appended {len(df)} rows into 'market_history' SQL table.")
+    conn = get_connection()
+    cursor = conn.cursor()
     
-    # Check each row we just saved for high volatility (> 2% shift)
+    # Bulk SQL stream engine integration
     for _, row in df.iterrows():
-        change_val = row['price_change_percentage_24h']
-        if abs(change_val) > 2.0:
-            send_email_alert(row['coin_id'], row['current_price'], change_val)
+        cursor.execute("""
+            INSERT INTO market_history (coin_id, symbol, name, current_price, market_cap, total_volume, price_change_24h, captured_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            row['coin_id'], row['symbol'], row['name'], 
+            row['current_price'], row['market_cap'], row['total_volume'],
+            row['price_change_percentage_24h'], row['captured_at']
+        ))
+        
+    conn.commit()
+    cursor.close()
+    conn.close()
+    print(f"💾 SUCCESS: Appended {len(df)} records into PostgreSQL cloud server storage.")
+
+if __name__ == "__main__":
+    initialize_database()
+

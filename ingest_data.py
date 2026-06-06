@@ -2,114 +2,61 @@ import random
 from datetime import datetime, timezone
 import pandas as pd
 import requests
+import database_manager
 
 COINS = "bitcoin,ethereum,solana,cardano"
-
-URL = "https://coingecko.com" + COINS
-
-
+URL = f"https://coingecko.com{COINS}"
 
 def fetch_live_market_data():
-    """Fetches live cryptocurrency data or generates mock data if the API fails."""
+    """Fetches real-time asset pricing metrics or utilizes fallback mockup frames."""
     try:
-        print("📡 Connecting to CoinGecko API...")
-        response = requests.get(URL, timeout=10)
-
-        print(f"📊 API Response Status Code: {response.status_code}")
+        print("📡 Accessing live CoinGecko Web Services API network endpoint...")
+        response = requests.get(URL, timeout=15)
+        print(f"📊 Response Transaction Status Code: {response.status_code}")
 
         if response.status_code == 429:
-            print("⚠️ Rate limit reached! Switching to mock data generation...")
+            print("⚠️ API Rate Limit reached! Initializing mock backup engine...")
             return generate_mock_data()
 
         response.raise_for_status()
         return response.json()
 
     except Exception as e:
-        print(f"❌ Connection error details: {e}")
-        print("⚠️ Switching to mock data generation so you can keep working...")
+        print(f"❌ Core API connectivity failure logs: {e}")
+        print("⚠️ Initializing backup engine to safeguard pipeline uptime...")
         return generate_mock_data()
 
-
 def generate_mock_data():
-    """Generates fake market data so your pipeline never freezes during development."""
+    """Fallback generator protecting pipeline execution flows against API failure constraints."""
     return [
-        {
-            "id": "bitcoin",
-            "symbol": "btc",
-            "name": "Bitcoin",
-            "current_price": random.randint(60000, 65000),
-            "market_cap": 1200000000,
-            "total_volume": 25000000,
-            "price_change_percentage_24h": random.uniform(-5.0, 5.0),
-        },
-        {
-            "id": "ethereum",
-            "symbol": "eth",
-            "name": "Ethereum",
-            "current_price": random.randint(3000, 3500),
-            "market_cap": 400000000,
-            "total_volume": 15000000,
-            "price_change_percentage_24h": random.uniform(-5.0, 5.0),
-        },
-        {
-            "id": "solana",
-            "symbol": "sol",
-            "name": "Solana",
-            "current_price": random.randint(130, 160),
-            "market_cap": 65000000,
-            "total_volume": 3000000,
-            "price_change_percentage_24h": random.uniform(-8.0, 8.0),
-        },
+        {"id": "bitcoin", "symbol": "btc", "name": "Bitcoin", "current_price": random.randint(62000, 68000), "market_cap": 1250000000, "total_volume": 28000000, "price_change_percentage_24h": random.uniform(-4.5, 4.5)},
+        {"id": "ethereum", "symbol": "eth", "name": "Ethereum", "current_price": random.randint(3200, 3600), "market_cap": 420000000, "total_volume": 17000000, "price_change_percentage_24h": random.uniform(-5.0, 5.0)},
+        {"id": "solana", "symbol": "sol", "name": "Solana", "current_price": random.randint(140, 175), "market_cap": 70000000, "total_volume": 4000000, "price_change_percentage_24h": random.uniform(-9.0, 9.0)},
+        {"id": "cardano", "symbol": "ada", "name": "Cardano", "current_price": random.uniform(0.4, 0.6), "market_cap": 18000000, "total_volume": 500000, "price_change_percentage_24h": random.uniform(-3.0, 3.0)}
     ]
 
-
 def clean_and_process_data(raw_data):
-    """Transforms data into a dataframe and standardizes columns."""
+    """Parses JSON formats into uniform structurally consistent Pandas layouts."""
     if not raw_data:
-        print("❌ No raw data received to process.")
         return None
 
     df = pd.DataFrame(raw_data)
-    columns_to_keep = [
-        "id",
-        "symbol",
-        "name",
-        "current_price",
-        "market_cap",
-        "total_volume",
-        "price_change_percentage_24h",
-    ]
+    columns_to_keep = ["id", "symbol", "name", "current_price", "market_cap", "total_volume", "price_change_percentage_24h"]
     df = df[columns_to_keep]
     df = df.rename(columns={"id": "coin_id"})
-
     
-    df["captured_at"] = (
-        datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-    )
+    # Modern timezone-aware timestamp conversion for database logging
+    df["captured_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     return df
 
 if __name__ == "__main__":
-    print("🚀 Running updated pipeline...")
-    
-    
-    import database_manager
-    
-   
+    print("🚀 Running cloud ingestion pipeline script execution...")
     database_manager.initialize_database()
-
+    raw_metrics = fetch_live_market_data()
+    clean_dataframe = clean_and_process_data(raw_metrics)
     
-    raw_market_data = fetch_live_market_data()
-    
-    
-    cleaned_df = clean_and_process_data(raw_market_data)
-
-    if cleaned_df is not None:
-        print("\n✅ DataFrame successfully created inside memory!")
-        
-      
-        cleaned_df.to_csv("live_market_data.csv", index=False)
-        
-    
-        database_manager.save_dataframe_to_sql(cleaned_df)
+    if clean_dataframe is not None:
+        database_manager.save_dataframe_to_sql(clean_dataframe)
     else:
-        print("❌ Pipeline failed. Dataframe was empty.")
+        print("❌ Data pipeline extraction run aborted: Null Reference Frame Exception.")
+
