@@ -1,0 +1,7 @@
+__pycache__/
+*.db
+*.csv
+.env
+.venv/
+venv/
+.streamlit/
