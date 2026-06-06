@@ -44,7 +44,7 @@ else:
     if not filtered_df.empty:
         latest_tick = filtered_df.iloc[-1]
         col1.metric("Current Market Valuation", f"${float(latest_tick['current_price']):,}")
-        col2.metric("24h Price Delta Variance", f"{float(latest_tick['price_change_24h'] clay):.2f}%")
+        col2.metric("24h Price Delta Variance", f"{float(latest_tick['price_change_24h']):.2f}%")
         col3.metric("Total Datapoints Tracked", len(filtered_df))
 
         # Charts and Data Visualization Grid Layouts
