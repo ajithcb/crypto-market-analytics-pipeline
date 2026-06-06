@@ -1,4 +1,0 @@
-coin_id,symbol,name,current_price,market_cap,total_volume,price_change_percentage_24h,captured_at
-bitcoin,btc,Bitcoin,60376,1200000000,25000000,-4.14709572553421,2026-06-06 10:39:48
-ethereum,eth,Ethereum,3318,400000000,15000000,4.1807411520698405,2026-06-06 10:39:48
-solana,sol,Solana,153,65000000,3000000,1.4768144446246705,2026-06-06 10:39:48
